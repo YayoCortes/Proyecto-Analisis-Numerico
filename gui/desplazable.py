@@ -10,8 +10,15 @@ from tkinter import ttk
 
 
 class AreaDesplazable(ttk.Frame):
-    def __init__(self, padre, fondo: str, estilo_interior: str = "TFrame", ancho: int = 300):
-        super().__init__(padre)
+    def __init__(
+        self,
+        padre,
+        fondo: str,
+        estilo_interior: str = "TFrame",
+        ancho: int = 300,
+        estilo_barra: str = "Vertical.TScrollbar",
+    ):
+        super().__init__(padre, style=estilo_interior)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
@@ -27,7 +34,9 @@ class AreaDesplazable(ttk.Frame):
         )
         self.lienzo.grid(row=0, column=0, sticky="nsew")
 
-        self.barra = ttk.Scrollbar(self, orient="vertical", command=self.lienzo.yview)
+        self.barra = ttk.Scrollbar(
+            self, orient="vertical", command=self.lienzo.yview, style=estilo_barra
+        )
         self.lienzo.configure(yscrollcommand=self._ajustar_barra)
 
         # Todo el contenido va dentro de este marco

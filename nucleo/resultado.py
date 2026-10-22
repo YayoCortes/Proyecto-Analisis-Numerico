@@ -18,6 +18,13 @@ MENSAJES_ESTADO = {
     RAIZ_EXACTA: "se encontró la raíz exacta: f(x) = 0",
 }
 
+# Version corta para la etiqueta de estado junto al resultado
+ETIQUETAS_ESTADO = {
+    CONVERGIO: "Convergió",
+    MAX_ITERACIONES: "Sin converger",
+    RAIZ_EXACTA: "Raíz exacta",
+}
+
 
 class ErrorMetodo(Exception):
     """Error previsible de un metodo (mensaje listo para mostrar al usuario)."""
@@ -29,12 +36,17 @@ class Parametro:
 
     La interfaz lee esta lista para dibujar las cajas de texto correctas,
     asi agregar un metodo nuevo no obliga a tocar la interfaz.
+
+    opciones: si tiene elementos, el campo no es una caja de texto sino un
+    selector. Cada opcion es (valor, texto), por ejemplo la regla de
+    integracion: [("trapecio", "Trapecio"), ("simpson", "Simpson 1/3")].
     """
 
     clave: str
     etiqueta: str
     valor_inicial: str = ""
     ayuda: str = ""
+    opciones: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -90,3 +102,37 @@ class Resultado:
     @property
     def convergio(self) -> bool:
         return self.estado in (CONVERGIO, RAIZ_EXACTA)
+
+
+@dataclass
+class ResultadoIntegral:
+    """Lo que devuelven las reglas de integracion (trapecio y Simpson).
+
+    iteraciones : una fila por cada punto x_i de la particion. Se llama
+                  igual que en Resultado para que la tabla las muestre
+                  del mismo modo (valor = x_i, fx = f(x_i)).
+    exacto      : valor de referencia calculado con alta precision, para
+                  obtener el error verdadero. None si no se pudo obtener.
+    """
+
+    iteraciones: list[Iteracion]
+    integral: float
+    regla: str
+    a: float
+    b: float
+    n: int
+    h: float
+    suma: float
+    exacto: float | None = None
+
+    @property
+    def error_verdadero(self) -> float | None:
+        """Error relativo porcentual verdadero: |(exacto - aprox)/exacto|*100."""
+        if self.exacto is None or self.exacto == 0:
+            return None
+        return abs((self.exacto - self.integral) / self.exacto) * 100.0
+
+    @property
+    def convergio(self) -> bool:
+        # Las reglas cerradas no iteran: siempre entregan su aproximacion
+        return True

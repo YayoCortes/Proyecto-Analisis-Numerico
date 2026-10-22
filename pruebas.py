@@ -7,7 +7,8 @@ No necesita la interfaz grafica: prueba solo la parte matematica.
 
 import math
 
-from metodos import biseccion, falsa_posicion, newton_raphson
+import metodos
+from metodos import biseccion, falsa_posicion, integracion, muller, newton_raphson
 from nucleo import parser
 from nucleo.resultado import CONVERGIO, MAX_ITERACIONES, ErrorMetodo
 
@@ -146,6 +147,94 @@ revisar(f"newton -> {r.raiz:.6f}", abs(r.raiz - 0.7390851) < 1e-6)
 fe = parser.compilar("exp(x) - 3x")
 r = biseccion.biseccion(fe, 0, 1, 0.0001, 200)
 revisar(f"exp(x)-3x en [0,1] -> {r.raiz:.6f} (0.619061)", abs(r.raiz - 0.6190612) < 1e-4)
+
+r = muller.muller(fc, 0, 0.5, 1, 0.0001, 200)
+revisar(f"muller -> {r.raiz:.6f}", abs(r.raiz - 0.7390851) < 1e-6)
+
+
+print("\n7. Muller   x^3-13x-12 con x0=4.5, x1=5.5, x2=5 (Chapra, ejemplo 6.8)")
+print("-" * 62)
+
+fm = parser.compilar("x^3 - 13x - 12")
+r = muller.muller(fm, 4.5, 5.5, 5, 0.01, 100)
+revisar("converge", r.estado == CONVERGIO, r.estado)
+revisar(f"raiz = {r.raiz:.8f} (exacta 4)", abs(r.raiz - 4) < 1e-6)
+e = r.iteraciones[0].extra
+revisar("iteracion 1: h0 = 1, h1 = -0.5", e["h0"] == 1 and e["h1"] == -0.5, f"{e['h0']}, {e['h1']}")
+revisar("iteracion 1: d0 = 62.25, d1 = 69.75",
+        math.isclose(e["d0"], 62.25) and math.isclose(e["d1"], 69.75), f"{e['d0']}, {e['d1']}")
+revisar("iteracion 1: a = 15, b = 62.25, c = 48",
+        math.isclose(e["a"], 15) and math.isclose(e["b"], 62.25) and math.isclose(e["c"], 48),
+        f"{e['a']}, {e['b']}, {e['c']}")
+revisar("iteracion 1: x3 = 3.976487",
+        math.isclose(r.iteraciones[0].valor, 3.976487, rel_tol=1e-6), f"{r.iteraciones[0].valor}")
+revisar("iteracion 1: ea = 25.74 %", abs(r.iteraciones[0].ea - 25.74) < 0.01, f"{r.iteraciones[0].ea}")
+revisar("iteracion 2: x3 = 4.001050",
+        math.isclose(r.iteraciones[1].valor, 4.00105, rel_tol=1e-6), f"{r.iteraciones[1].valor}")
+revisar("la tabla guarda las 15 cantidades de cada iteracion",
+        len(muller.COLUMNAS) == 16 and set(e) == {
+            "x0", "x1", "x2", "f0", "f1", "f2", "h0", "h1", "d0", "d1", "a", "b", "c"})
+revisar("en la iteracion 2 se descarta x0 (x0 <- x1, x1 <- x2, x2 <- x3)",
+        r.iteraciones[1].extra["x0"] == 5.5 and r.iteraciones[1].extra["x2"] == r.iteraciones[0].valor)
+for it in r.iteraciones:
+    print(f"       i={it.numero}  x3={it.valor:.6f}  ea={it.ea:.4g}%")
+
+try:
+    muller.muller(fm, 4.5, 4.5, 5, 0.01, 100)
+    revisar("rechaza puntos iniciales repetidos", False)
+except ErrorMetodo:
+    revisar("rechaza puntos iniciales repetidos", True)
+
+try:
+    muller.muller(parser.compilar("x^2 + 1"), 0, 1, 2, 0.01, 100)
+    revisar("avisa cuando la raiz seria compleja", False)
+except ErrorMetodo as e:
+    revisar("avisa cuando la raiz seria compleja", "complejo" in str(e))
+
+
+print("\n8. Integracion   0.2+25x-200x^2+675x^3-900x^4+400x^5 de 0 a 0.8 (Chapra)")
+print("-" * 62)
+
+fp = parser.compilar("0.2 + 25x - 200x^2 + 675x^3 - 900x^4 + 400x^5")
+revisar("valor verdadero = 1.640533", abs(fp.integral(0, 0.8) - 1.6405333) < 1e-6, f"{fp.integral(0, 0.8)}")
+
+for n, esperado in ((1, 0.1728), (2, 1.0688), (4, 1.4848)):
+    r = integracion.trapecio(fp, 0, 0.8, n)
+    revisar(f"trapecio n={n} -> {r.integral:.6f} ({esperado})", abs(r.integral - esperado) < 1e-6)
+
+for n, esperado in ((2, 1.367467), (4, 1.623467)):
+    r = integracion.simpson(fp, 0, 0.8, n)
+    revisar(f"simpson 1/3 n={n} -> {r.integral:.6f} ({esperado})", abs(r.integral - esperado) < 1e-6)
+
+r = integracion.trapecio(fp, 0, 0.8, 1)
+revisar(f"error verdadero del trapecio n=1 = {r.error_verdadero:.1f} % (89.5 %)",
+        abs(r.error_verdadero - 89.5) < 0.05)
+
+r = integracion.simpson(fp, 0, 0.8, 4)
+revisar("coeficientes de Simpson 1, 4, 2, 4, 1",
+        [it.extra["coef"] for it in r.iteraciones] == [1, 4, 2, 4, 1])
+revisar("h = 0.2 y 5 puntos en la tabla", math.isclose(r.h, 0.2) and len(r.iteraciones) == 5)
+r = integracion.trapecio(fp, 0, 0.8, 4)
+revisar("coeficientes del trapecio 1, 2, 2, 2, 1",
+        [it.extra["coef"] for it in r.iteraciones] == [1, 2, 2, 2, 1])
+
+r = integracion.simpson(parser.compilar("x^3"), 0, 2, 2)
+revisar("simpson es exacto con un polinomio cubico (x^3 de 0 a 2 = 4)", math.isclose(r.integral, 4))
+
+try:
+    integracion.simpson(fp, 0, 0.8, 3)
+    revisar("simpson rechaza n impar", False)
+except ErrorMetodo as e:
+    revisar("simpson rechaza n impar", "par" in str(e))
+
+r = integracion.ejecutar(fp, {"regla": "simpson", "a": "0", "b": "0.8", "n": "4"})
+revisar("la interfaz elige la regla de Simpson", r.regla == "simpson")
+
+revisar("sin valor verdadero si hay una asintota dentro (1/x de -1 a 1)",
+        parser.compilar("1/x").integral(-1, 1) is None)
+
+titulo, _, _ = metodos.explicacion(integracion, {"regla": "trapecio"})
+revisar("el titulo cambia con la regla", titulo == "Regla del Trapecio", titulo)
 
 
 print("\n" + "=" * 62)

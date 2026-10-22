@@ -7,8 +7,10 @@ Se usa SymPy en lugar de eval() por dos razones:
    funcion y el metodo de Newton-Raphson obtiene f'(x) solo.
 """
 
+import math
 import re
 
+import mpmath
 import numpy as np
 import sympy as sp
 from sympy.parsing.sympy_parser import (
@@ -107,6 +109,32 @@ class Funcion:
 
     def df_array(self, valores: np.ndarray) -> np.ndarray:
         return _evaluar_array(self._df, valores)
+
+    # --- integral de referencia ---------------------------------------
+
+    def integral(self, a: float, b: float) -> float | None:
+        """Valor de referencia de la integral de a a b.
+
+        Se usa la cuadratura de alta precision de mpmath (viene con SymPy)
+        en lugar de sp.integrate, que con algunas funciones tarda minutos.
+        Si el resultado no es confiable (por ejemplo, una asintota dentro
+        del intervalo) devuelve None.
+        """
+        try:
+            g = sp.lambdify(X, self.expresion, "mpmath")
+            valor, error = mpmath.quad(g, [a, b], error=True)
+        except (ValueError, ZeroDivisionError, OverflowError, TypeError):
+            return None
+
+        if isinstance(valor, mpmath.mpc):
+            if abs(valor.imag) > 1e-12:
+                return None
+            valor = valor.real
+
+        valor = float(valor)
+        if not math.isfinite(valor) or float(error) > 1e-8 * max(1.0, abs(valor)):
+            return None
+        return valor
 
 
 def compilar(texto: str) -> Funcion:

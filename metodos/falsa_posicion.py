@@ -12,6 +12,7 @@ from nucleo.resultado import ErrorMetodo, Resultado
 NOMBRE = "Falsa Posición"
 CLAVE = "falsa_posicion"
 TIPO = "cerrado"
+GRAFICA = "intervalo"
 RESUMEN = "Une (a, f(a)) con (b, f(b)) con una recta y toma el punto donde esa recta corta el eje x."
 FORMULA = "c = b - f(b)(a - b) / (f(a) - f(b))"
 

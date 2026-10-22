@@ -12,6 +12,7 @@ from nucleo.resultado import Resultado
 NOMBRE = "Bisección"
 CLAVE = "biseccion"
 TIPO = "cerrado"
+GRAFICA = "intervalo"
 RESUMEN = "Parte el intervalo [a, b] a la mitad en cada paso y se queda con la mitad donde f(x) cambia de signo."
 FORMULA = "c = (a + b) / 2"
 

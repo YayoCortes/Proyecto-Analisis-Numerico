@@ -31,6 +31,8 @@ from nucleo.validacion import (
 NOMBRE = "Newton-Raphson"
 CLAVE = "newton_raphson"
 TIPO = "abierto"
+GRAFICA = "tangentes"
+USA_DERIVADA = True
 RESUMEN = "Desde un solo punto x₀, sigue la recta tangente a la curva hasta donde corta el eje x."
 FORMULA = "x(i+1) = x(i) - f(x(i)) / f'(x(i))"
 
