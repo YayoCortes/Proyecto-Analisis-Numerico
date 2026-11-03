@@ -4,6 +4,9 @@ Los datos se piden en el orden en que se resuelve un ejercicio: elegir el
 metodo, escribir la funcion y dar los valores. La parte del medio se puede
 desplazar (para pantallas pequenas) y el boton Calcular queda siempre fijo
 abajo, a la vista.
+
+La funcion se escribe con el teclado o, en el modo calculadora, con
+botones; en los dos casos se ve dibujada debajo como en un libro.
 """
 
 import tkinter as tk
@@ -11,7 +14,9 @@ from tkinter import ttk
 
 import metodos
 from gui import tema
+from gui.calculadora import Calculadora
 from gui.desplazable import AreaDesplazable
+from gui.formula import PantallaFuncion, VentanaFuncion
 from nucleo import parser
 from nucleo.resultado import ErrorMetodo
 
@@ -84,6 +89,9 @@ EJEMPLOS = [
 # Ancho util del texto dentro de la pizarra
 ANCHO_TEXTO = 262
 
+# Maneras de escribir f(x)
+MODOS = [("teclado", "Teclado"), ("calculadora", "Calculadora")]
+
 
 class PanelControles(ttk.Frame):
     """Panel lateral con todos los datos de entrada."""
@@ -97,12 +105,14 @@ class PanelControles(ttk.Frame):
         self.var_funcion = tk.StringVar(value="-0.4x^2 + 2.2x + 4.7")
         self.var_tolerancia = tk.StringVar(value="0.01")
         self.var_max_iter = tk.StringVar(value="100")
+        self.var_modo = tk.StringVar(value="teclado")
 
         # Se recuerdan los valores aunque se cambie de metodo:
         # a y b los comparten biseccion, falsa posicion e integracion.
         self._vars_parametros: dict[str, tk.StringVar] = {}
         self._barras_metodo: dict[str, tk.Frame] = {}
         self._tarea_lectura = None
+        self._vista = None  # vista ampliada de f(x), si esta abierta
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
@@ -117,6 +127,7 @@ class PanelControles(ttk.Frame):
             estilo_barra="Pizarra.Vertical.TScrollbar",
         )
         area.grid(row=1, column=0, sticky="nsew")
+        self._area = area
         self.cuerpo = ttk.Frame(
             area.interior,
             style="Pizarra.TFrame",
@@ -205,6 +216,21 @@ class PanelControles(ttk.Frame):
         self._paso(cuerpo, 2, "Escribe la función f(x)", fila)
         fila += 1
 
+        modos = ttk.Frame(cuerpo, style="Pizarra.TFrame")
+        modos.grid(row=fila, column=0, sticky="ew", pady=(0, tema.px(8)))
+        for j, (valor, texto) in enumerate(MODOS):
+            modos.columnconfigure(j, weight=1, uniform="modo")
+            ttk.Radiobutton(
+                modos,
+                text=texto,
+                value=valor,
+                variable=self.var_modo,
+                style="Opcion.Toolbutton",
+                command=self._cambio_de_modo,
+                cursor="hand2",
+            ).grid(row=0, column=j, sticky="ew")
+        fila += 1
+
         # La letra de un Entry no la toma del estilo: va en el propio widget
         self.entrada_funcion = ttk.Entry(
             cuerpo, textvariable=self.var_funcion, style="Pizarra.TEntry", font=tema.FUENTE_MONO
@@ -213,23 +239,25 @@ class PanelControles(ttk.Frame):
         self.entrada_funcion.bind("<Return>", self._enter)
         fila += 1
 
-        ttk.Label(
+        # Como entendio el programa lo que se escribio (y f'(x) para Newton),
+        # dibujado con fracciones, raices y exponentes
+        self.pantalla = PantallaFuncion(
+            cuerpo, ancho=tema.px(ANCHO_TEXTO), al_ampliar=self._ampliar
+        )
+        self.pantalla.grid(row=fila, column=0, sticky="ew", pady=(0, tema.px(8)))
+        fila += 1
+
+        # Debajo de la pantalla: la ayuda del teclado o las teclas
+        self.ayuda_teclado = ttk.Label(
             cuerpo,
             text="Vale x^2 o x**2, y 2x o 2*x.\nFunciones: sin, cos, tan, exp, ln, sqrt.",
             style="Suave.Pizarra.TLabel",
             justify="left",
-        ).grid(row=fila, column=0, sticky="ew", pady=(0, tema.px(6)))
-        fila += 1
-
-        # Como entendio el programa lo que se escribio (y f'(x) para Newton)
-        self.lbl_lectura = ttk.Label(
-            cuerpo,
-            text="",
-            style="Lectura.Pizarra.TLabel",
-            wraplength=tema.px(ANCHO_TEXTO),
-            justify="left",
         )
-        self.lbl_lectura.grid(row=fila, column=0, sticky="ew")
+        self.ayuda_teclado.grid(row=fila, column=0, sticky="ew")
+        self.calculadora = Calculadora(cuerpo, self.entrada_funcion)
+        self.calculadora.grid(row=fila, column=0, sticky="ew")
+        self.calculadora.grid_remove()
         fila += 1
 
         # --- 3. datos ---
@@ -413,31 +441,54 @@ class PanelControles(ttk.Frame):
         self._tarea_lectura = None
         texto = self.var_funcion.get().strip()
         if not texto:
-            self.lbl_lectura.configure(
-                text="Escribe una función para empezar.",
-                foreground=tema.TIZA_SUAVE,
-                font=tema.FUENTE_PEQUENA,
-            )
+            aviso = "Escribe una función para empezar."
+            self.pantalla.avisar(aviso)
+            if self._vista:
+                self._vista.mostrar(texto, aviso=aviso)
             self.entrada_funcion.configure(style="Pizarra.TEntry")
             return
         try:
             funcion = parser.compilar(texto)
         except ErrorMetodo:
-            self.lbl_lectura.configure(
-                text="No se entiende la función. Revisa los paréntesis y los operadores.",
-                foreground=tema.TIZA_ROJA,
-                font=tema.FUENTE_PEQUENA,
-            )
+            aviso = "Función no válida"
+            self.pantalla.avisar(aviso, error=True)
+            if self._vista:
+                self._vista.mostrar(texto, aviso=aviso)
             self.entrada_funcion.configure(style="Invalida.Pizarra.TEntry")
             return
 
-        lineas = [f"f(x) = {funcion.texto_f}"]
-        if metodos.usa_derivada(self.metodo_actual()):
-            lineas.append(f"f'(x) = {funcion.texto_df}")
-        self.lbl_lectura.configure(
-            text="\n".join(lineas), foreground=tema.TIZA_AZUL, font=tema.FUENTE_MONO_PEQUENA
-        )
+        self.pantalla.mostrar(funcion, con_derivada=metodos.usa_derivada(self.metodo_actual()))
+        if self._vista:
+            self._vista.mostrar(texto, funcion)
         self.entrada_funcion.configure(style="Pizarra.TEntry")
+
+    # ------------------------------------------------------------------
+    # Teclado o calculadora, y la vista ampliada
+    # ------------------------------------------------------------------
+
+    def _cambio_de_modo(self) -> None:
+        if self.var_modo.get() == "calculadora":
+            self.ayuda_teclado.grid_remove()
+            self.calculadora.grid()
+            # Con las teclas la pizarra crece: se baja hasta que se vean
+            # la caja, la pantalla y las teclas juntas
+            self._area.mostrar(self.entrada_funcion, self.calculadora)
+        else:
+            self.calculadora.grid_remove()
+            self.ayuda_teclado.grid()
+        self.entrada_funcion.focus_set()
+        self.entrada_funcion.icursor("end")
+
+    def _ampliar(self) -> None:
+        if self._vista is not None:
+            self._vista.lift()
+            self._vista.focus_set()
+            return
+        self._vista = VentanaFuncion(self, al_cerrar=self._vista_cerrada)
+        self._actualizar_lectura()
+
+    def _vista_cerrada(self) -> None:
+        self._vista = None
 
     # ------------------------------------------------------------------
     # Ejemplos

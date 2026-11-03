@@ -29,7 +29,8 @@ Necesita Python 3.10 o superior. Tkinter viene incluido con Python en Windows.
 | Cambiar de método fácilmente | Paso 1 de la columna izquierda; la f(x) escrita **se conserva** y se recalcula sola |
 | Ver las iteraciones | Tabla inferior, con todas las columnas del método y el error de cada paso |
 | Seguir una iteración en la gráfica | Al elegir una fila de la tabla (o moverse con ↑ ↓) se dibuja esa iteración: el intervalo, la tangente, la parábola o el punto. `Esc` la quita |
-| Escribir la función | Paso 2; mientras se escribe se muestra cómo se entendió (y f'(x) en Newton) |
+| Escribir la función | Paso 2, con el teclado o con la **Calculadora**; debajo se ve dibujada (y f'(x) en Newton) |
+| Ver la función en grande | Botón **⤢**: f(x) y f'(x) en una ventana aparte |
 | Ejemplos resueltos | Desplegable arriba a la derecha: llena todos los campos y calcula |
 
 ### Müller
@@ -67,6 +68,12 @@ Se acepta la forma natural y también la de Python:
 Funciones disponibles: `sin` (o `sen`), `cos`, `tan`, `exp`, `ln`, `log`,
 `sqrt` (o `raiz`), `abs`, y las constantes `pi` y `e`.
 
+#### Calculadora
+
+Las teclas escriben en la caja, donde está el cursor, y se pueden combinar
+con el teclado. **2nd** da la inversa (sin⁻¹, log, x³, 10ˣ) para la tecla
+siguiente; **⌫** borra una función completa (`sin(`, `pi`).
+
 La tolerancia se da en **porcentaje**, igual que en los códigos originales:
 el método se detiene cuando el error relativo aproximado
 
@@ -80,7 +87,7 @@ baja de ese valor.
 main.py                  punto de entrada
 nucleo/
   parser.py              texto del usuario -> función evaluable + derivada (SymPy)
-                         + integral de referencia (mpmath)
+                         + integral de referencia (mpmath) + LaTeX para dibujarla
   resultado.py           estructuras comunes: Iteracion, Resultado, ResultadoIntegral,
                          Parametro, Columna
   validacion.py          validaciones y mensajes de error compartidos
@@ -95,6 +102,8 @@ gui/
   tema.py                paleta, tipografías y escala de pantalla
   app.py                 ventana principal
   panel_controles.py     columna izquierda (método, f(x), datos)
+  calculadora.py         teclado de la calculadora
+  formula.py             f(x) dibujada (fracciones, raíces) y su vista ampliada
   panel_grafica.py       gráfica de matplotlib embebida
   panel_tabla.py         resultado y tabla de iteraciones
   desplazable.py         zona con barra de desplazamiento

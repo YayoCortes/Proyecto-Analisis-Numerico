@@ -11,7 +11,7 @@ from gui.panel_tabla import PanelTabla
 from nucleo import parser, validacion
 from nucleo.resultado import ErrorMetodo
 
-TEXTO_EJEMPLOS = "Cargar un ejemplo resuelto"
+TEXTO_EJEMPLOS = "Ejemplos"
 
 
 class Aplicacion(tk.Tk):

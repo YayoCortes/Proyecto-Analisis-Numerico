@@ -48,11 +48,35 @@ class AreaDesplazable(ttk.Frame):
         self.interior.bind("<Configure>", self._al_cambiar_contenido)
         self.lienzo.bind("<Configure>", self._al_cambiar_ancho)
 
-        # La rueda del raton solo actua mientras el puntero esta encima
-        self.lienzo.bind("<Enter>", self._activar_rueda)
-        self.lienzo.bind("<Leave>", self._desactivar_rueda)
+        # La rueda del raton solo actua mientras el puntero esta encima de
+        # la zona, incluidos los botones y cajas que hay dentro. (Con Enter y
+        # Leave del lienzo se perdia al pasar sobre ellos: Tk avisa Leave
+        # cuando el puntero entra a un widget hijo.)
+        self.bind_all("<MouseWheel>", self._rueda, add="+")
 
     # ------------------------------------------------------------------
+
+    def mostrar(self, desde, hasta=None) -> None:
+        """Desplaza lo justo para que se vea desde un widget hasta otro.
+
+        Si no cabe todo, se prefiere que se vea el comienzo.
+        """
+        hasta = hasta or desde
+        self.update_idletasks()
+        # El aviso <Configure> del contenido aun no ha llegado: sin esto se
+        # desplazaria con el alto viejo
+        self._al_cambiar_contenido()
+        total = self.interior.winfo_height()
+        visible = self.lienzo.winfo_height()
+        if total <= visible:
+            return
+        arriba = desde.winfo_rooty() - self.interior.winfo_rooty()
+        abajo = hasta.winfo_rooty() + hasta.winfo_height() - self.interior.winfo_rooty()
+        inicio = self.lienzo.canvasy(0)
+        if abajo > inicio + visible:
+            self.lienzo.yview_moveto(min(arriba, abajo - visible) / total)
+        elif arriba < inicio:
+            self.lienzo.yview_moveto(arriba / total)
 
     def _al_cambiar_contenido(self, _evento=None) -> None:
         self.lienzo.configure(scrollregion=self.lienzo.bbox("all"))
@@ -69,12 +93,17 @@ class AreaDesplazable(ttk.Frame):
             self.barra.grid(row=0, column=1, sticky="ns")
         self.barra.set(primero, ultimo)
 
-    def _activar_rueda(self, _evento=None) -> None:
-        self.lienzo.bind_all("<MouseWheel>", self._rueda)
-
-    def _desactivar_rueda(self, _evento=None) -> None:
-        self.lienzo.unbind_all("<MouseWheel>")
-
     def _rueda(self, evento) -> None:
-        if self.barra.winfo_ismapped():
+        if self.barra.winfo_ismapped() and self._bajo_el_puntero(evento):
             self.lienzo.yview_scroll(int(-evento.delta / 120), "units")
+
+    def _bajo_el_puntero(self, evento) -> bool:
+        try:
+            widget = self.winfo_containing(evento.x_root, evento.y_root)
+        except (KeyError, tk.TclError):  # widgets internos de Tk, sin nombre en Python
+            return False
+        while widget is not None:
+            if widget is self:
+                return True
+            widget = widget.master
+        return False

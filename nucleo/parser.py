@@ -71,6 +71,15 @@ def _a_texto(expresion) -> str:
     return re.sub(r"(\d)\*([a-zA-Z(])", r"\1\2", texto)
 
 
+def _a_latex(expresion) -> str:
+    """LaTeX para dibujar la formula como en un libro.
+
+    Se pide ln en vez de log y sin⁻¹ en vez de asin, que es como aparecen
+    en clase y en las calculadoras.
+    """
+    return sp.latex(expresion, ln_notation=True, inv_trig_style="power")
+
+
 class Funcion:
     """Funcion f(x) del usuario, lista para evaluar y para graficar."""
 
@@ -93,6 +102,14 @@ class Funcion:
     @property
     def texto_df(self) -> str:
         return _a_texto(self.derivada)
+
+    @property
+    def latex_f(self) -> str:
+        return _a_latex(self.expresion)
+
+    @property
+    def latex_df(self) -> str:
+        return _a_latex(self.derivada)
 
     # --- evaluacion de un solo valor ----------------------------------
 

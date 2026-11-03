@@ -44,6 +44,16 @@ revisar("f'(-1.5) = 4.75", math.isclose(f2.df(-1.5), 4.75), f"{f2.df(-1.5)}")
 revisar("x**2 tambien funciona", math.isclose(parser.compilar("x**2").f(3), 9))
 revisar("sin/cos funcionan", math.isclose(parser.compilar("cos(x)").f(0), 1))
 
+# Lo que escriben las teclas del modo calculadora
+fcalc = parser.compilar("exp(-x^2)/sqrt(x+1)-asin(x)")
+revisar("las funciones de la calculadora se leen", math.isclose(fcalc.f(0), 1), f"{fcalc.f(0)}")
+revisar("x*pi y 10^(x) se leen", math.isclose(parser.compilar("x*pi+10^(x)").f(1), math.pi + 10))
+revisar("la formula para dibujar usa fracciones y raices",
+        parser.compilar("sqrt(x)/2").latex_f == r"\frac{\sqrt{x}}{2}", parser.compilar("sqrt(x)/2").latex_f)
+revisar("la formula para dibujar usa ln y sin^-1",
+        parser.compilar("ln(x) + asin(x)").latex_f == r"\ln{\left(x \right)} + \sin^{-1}{\left(x \right)}",
+        parser.compilar("ln(x) + asin(x)").latex_f)
+
 try:
     parser.compilar("y^2 + 1")
     revisar("se rechaza una variable distinta de x", False)

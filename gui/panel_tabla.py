@@ -289,7 +289,7 @@ class PanelTabla(ttk.Frame):
             pista = "Elige una fila para ubicar ese punto en la gráfica."
         else:
             self._resumen_raiz(resultado)
-            pista = "Elige una fila para ver esa iteración en la gráfica; con ↑ y ↓ pasas a la siguiente."
+            pista = "Clic en una fila para verla en la gráfica"
         self.lbl_pista.configure(text=pista)
         self.btn_copiar.state(["!disabled"])
 
